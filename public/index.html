@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crove CF v3.1.2 Pages Functions</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f7fb;color:#111827;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+header{background:linear-gradient(135deg,#111827,#374151);color:#fff;padding:38px 18px}.wrap{max-width:900px;margin:auto}
+main{padding:20px 14px 50px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:18px;margin:0 auto 16px;box-shadow:0 5px 20px #0000000a}
+h1{margin:0;font-size:29px}h2{margin:0 0 14px;font-size:19px}header p{margin:8px 0 0;color:#d1d5db}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}label{font-size:13px;color:#4b5563}
+input{width:100%;margin-top:6px;padding:11px;border:1px solid #d1d5db;border-radius:10px;font:inherit}
+button{border:0;border-radius:10px;padding:11px 16px;background:#111827;color:#fff;font:inherit;cursor:pointer}button:disabled{opacity:.5}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}.log{white-space:pre-wrap;background:#f3f4f6;border-radius:10px;padding:12px;font-size:13px;line-height:1.7}
+.ok{background:#ecfdf5;color:#065f46}.err{background:#fef2f2;color:#991b1b}.warn{background:#fffbeb;color:#92400e}
+.bar{height:8px;background:#e5e7eb;border-radius:20px;overflow:hidden;margin-top:12px}.bar i{display:block;width:0;height:100%;background:#111827}
+.row{display:flex;justify-content:space-between;gap:10px;padding:10px;background:#f7f8fa;border-radius:9px;margin:6px 0;font-size:13px}.mono{font-family:ui-monospace,monospace;word-break:break-all}
+small{color:#6b7280;line-height:1.6}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>⚡ Crove CF v3.1.2</h1><p>Cloudflare Pages Functions 单项目版 · Global API Key + 邮箱</p></div></header>
+<main class="wrap">
+<div class="card">
+<h2>🔐 Cloudflare 账号</h2>
+<div class="grid">
+<label>邮箱<input id="email" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="name@example.com"></label>
+<label>Global API Key<input id="key" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="Global API Key"></label>
+</div>
+<div class="actions"><button onclick="verify()">🔎 验证账号</button></div>
+<div class="log warn">Global API Key 只在当前请求中使用，不写入 localStorage、sessionStorage、Cookie、URL 或 KV。建议仅使用临时 Key。</div>
+</div>
+<div class="card">
+<h2>⚙️ 部署设置</h2>
+<div class="grid">
+<label>Worker 名称<input id="worker" autocomplete="off" value="crove-cf-v31"></label>
+<label>KV 名称<input id="kv" autocomplete="off" value="CROVE_CF_NODES_V31"></label>
+<label>Account ID（可选）<input id="account" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="多个账户时填写"></label>
+</div>
+<div class="actions"><button id="go" onclick="deploy()">🚀 一键部署</button></div>
+<div class="bar"><i id="bar"></i></div>
+</div>
+<div class="card"><h2>📋 日志</h2><div id="log" class="log">等待操作…</div></div>
+<div class="card"><h2>✅ 结果</h2><div id="out">
+<div class="row"><b>Account ID</b><span class="mono">-</span></div>
+<div class="row"><b>KV ID</b><span class="mono">-</span></div>
+<div class="row"><b>Worker URL</b><span class="mono">-</span></div>
+</div></div>
+<div class="card"><h2>📦 Pages 设置</h2><small>Build command 留空；Build output directory 填 <b>public</b>。Functions 目录放在项目根目录，Cloudflare Pages 会自动识别。</small></div>
+</main>
+<script>
+function email(){return document.getElementById("email").value.trim()}
+function key(){return document.getElementById("key").value.trim()}
+function log(s,cls=""){const e=document.getElementById("log");e.className="log "+cls;e.textContent+=(e.textContent==="等待操作…"?"":"\n")+s}
+function pct(n){document.getElementById("bar").style.width=n+"%"}
+async function call(path,body={}){
+const r=await fetch("/api/"+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:email(),key:key(),...body})});
+let d=null;try{d=await r.json()}catch(e){}
+if(!r.ok||d?.success===false)throw Error(d?.error||"HTTP "+r.status);
+return d
+}
+async function verify(){
+document.getElementById("log").textContent="";
+try{const d=await call("verify");log("Cloudflare 账号验证成功："+(d.email||email()),"ok")}
+catch(e){log("验证失败："+e.message,"err")}
+}
+async function deploy(){
+const b=document.getElementById("go");b.disabled=true;document.getElementById("log").textContent="";pct(5);
+try{
+if(!email())throw Error("请输入 Cloudflare 邮箱");
+if(!key())throw Error("请输入 Global API Key");
+log("1/4 验证账号…");await call("verify");pct(20);
+const manual=document.getElementById("account").value.trim();
+let a;
+if(manual){a=manual}else{log("2/4 获取 Account ID…");a=(await call("account")).accountId}
+log("Account ID："+a);pct(35);
+log("3/4 创建/复用 KV…");const k=await call("kv",{accountId:a,title:document.getElementById("kv").value.trim()||"CROVE_CF_NODES_V31"});log("KV ID："+k.kvId,"ok");pct(55);
+const n=(document.getElementById("worker").value.trim()||"crove-cf-v31").replace(/[^A-Za-z0-9_-]/g,"-").slice(0,63);
+log("4/4 部署 Worker…");const w=await call("deploy",{accountId:a,workerName:n,kvId:k.kvId});log("Worker 上传成功","ok");pct(100);
+document.getElementById("out").innerHTML='<div class="row"><b>Account ID</b><span class="mono">'+a+'</span></div><div class="row"><b>KV ID</b><span class="mono">'+k.kvId+'</span></div><div class="row"><b>Worker URL</b><span class="mono">'+w.workerUrl+'</span></div>';
+log("部署完成！","ok");
+}catch(e){pct(0);log("部署失败："+e.message,"err")}finally{b.disabled=false}
+}
+window.addEventListener("pagehide",()=>{document.getElementById("key").value="";document.getElementById("email").value=""});
+window.addEventListener("beforeunload",()=>{document.getElementById("key").value="";document.getElementById("email").value=""});
+</script>
+</body>
+</html>
