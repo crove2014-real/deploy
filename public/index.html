@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crove CF v3.4 Pure Pages</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f7fb;color:#111827;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+header{background:linear-gradient(135deg,#111827,#374151);color:#fff;padding:40px 18px}.wrap{max-width:960px;margin:auto}h1{margin:0;font-size:30px}header p{color:#d1d5db}
+main{padding:20px 14px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:20px;margin-bottom:16px}
+h2{margin:0 0 14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}label{font-size:13px;color:#4b5563}
+input,select{width:100%;margin-top:6px;padding:11px;border:1px solid #d1d5db;border-radius:10px;font:inherit}button{border:0;border-radius:10px;padding:11px 16px;background:#111827;color:#fff;font:inherit;cursor:pointer}
+button:disabled{opacity:.5}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.log{white-space:pre-wrap;background:#f3f4f6;border-radius:10px;padding:13px;min-height:80px;font-size:13px;line-height:1.7}
+.row{display:flex;justify-content:space-between;gap:12px;background:#f7f8fa;padding:11px;border-radius:10px;margin:7px 0;font-size:13px}.mono{font-family:ui-monospace,monospace;word-break:break-all}.warn{background:#fffbeb;color:#92400e}
+</style></head>
+<body><header><div class="wrap"><h1>⚡ Crove CF v3.4 Pure Pages</h1><p>cfnew-deployer 风格 · 单 Pages 项目 · Pages Functions 后端</p></div></header>
+<main class="wrap">
+<div class="card"><h2>🔐 Cloudflare 认证</h2><div class="grid">
+<label>邮箱<input id="email" type="email" autocomplete="off"></label>
+<label>Global API Key<input id="key" type="password" autocomplete="new-password"></label>
+<label>Account ID（可选）<input id="account" autocomplete="off"></label></div>
+<div class="actions"><button onclick="accounts()">验证并获取账户</button></div>
+<div class="log warn">Global API Key 只用于当前请求，不写入 localStorage、sessionStorage、Cookie、KV 或文件。请不要把此部署器公开给不可信用户。</div></div>
+
+<div class="card"><h2>📦 资源</h2><div class="actions"><button onclick="resources()">刷新 Workers / Pages / KV</button></div><div id="resources" class="log">尚未查询</div></div>
+
+<div class="card"><h2>🚀 一键部署</h2><div class="grid">
+<label>目标<select id="target"><option value="pages">Pages + Functions</option><option value="worker">Worker</option><option value="both">Pages + Worker</option></select></label>
+<label>模式<select id="mode"><option value="create">创建/复用</option><option value="update">更新</option></select></label>
+<label>Pages 名称<input id="pages" value="crove-cf-v34"></label>
+<label>Worker 名称<input id="worker" value="crove-cf-v34-worker"></label>
+<label>KV 名称<input id="kv" value="CROVE_CF_NODES_V34"></label>
+</div><div class="actions"><button id="go" onclick="deploy()">🚀 开始部署</button></div></div>
+
+<div class="card"><h2>📋 日志</h2><div id="log" class="log">等待操作…</div></div>
+<div class="card"><h2>🔗 结果</h2><div id="result"><div class="row"><b>Pages</b><span class="mono">-</span></div><div class="row"><b>Worker</b><span class="mono">-</span></div><div class="row"><b>KV</b><span class="mono">-</span></div></div></div>
+</main>
+<script>
+const $=x=>document.getElementById(x);function cr(){return{email:$("email").value.trim(),key:$("key").value.trim()}}
+async function api(p,b={}){let r=await fetch("/api/"+p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});let d=await r.json().catch(()=>({}));if(!r.ok||d.ok===false)throw Error(d.error||"HTTP "+r.status);return d}
+async function accounts(){try{let d=await api("accounts",{credentials:cr()});if(!d.accounts.length)throw Error("没有可用账户");$("account").value=d.accounts[0].id;$("log").textContent="验证成功\\nAccount："+d.accounts[0].name+"\\nID："+d.accounts[0].id}catch(e){$("log").textContent="验证失败："+e.message}}
+async function resources(){try{let d=await api("resources",{credentials:cr(),accountId:$("account").value.trim()});$("resources").textContent="Workers：\\n"+d.workers.join("\\n")+"\\n\\nPages：\\n"+d.pages.join("\\n")+"\\n\\nKV：\\n"+d.kv.join("\\n")}catch(e){$("resources").textContent="获取失败："+e.message}}
+async function deploy(){let b=$("go");b.disabled=true;try{let d=await api("deploy",{credentials:cr(),accountId:$("account").value.trim(),target:$("target").value,mode:$("mode").value,pagesName:$("pages").value.trim(),workerName:$("worker").value.trim(),kvName:$("kv").value.trim()});$("log").textContent=d.logs.join("\\n");$("result").innerHTML='<div class="row"><b>Pages</b><span class="mono">'+(d.pagesUrl||"-")+'</span></div><div class="row"><b>Worker</b><span class="mono">'+(d.workerUrl||"-")+'</span></div><div class="row"><b>KV</b><span class="mono">'+(d.kvId||"-")+'</span></div>}catch(e){$("log").textContent="部署失败："+e.message}finally{b.disabled=false}}
+addEventListener("pagehide",()=>{$("email").value="";$("key").value=""});
+</script></body></html>
