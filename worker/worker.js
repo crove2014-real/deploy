@@ -1,1 +1,0 @@
-export default{async fetch(){return new Response(JSON.stringify({name:"Crove CF v3.2 Worker",version:"3.2",status:"ready"}),{headers:{"Content-Type":"application/json"}})}}
