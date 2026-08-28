@@ -1,8 +1,0 @@
-name = "crove-cf-v32"
-compatibility_date = "2026-08-28"
-pages_build_output_dir = "public"
-
-# 创建 KV 后填写真实 namespace ID：
-# [[kv_namespaces]]
-# binding = "CROVE_NODES"
-# id = "你的KV_ID"
